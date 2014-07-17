@@ -270,22 +270,8 @@ def make_outDir(outDir):
 		logging.info("Making new directory for output: {}".format(outDir))
 
 
-def main():
-	# --get the input arguments
-	parser = argparse.ArgumentParser(description="run random forest analysis of all features vs specified target")
-	args = parse_CmdArgs(parser)
-
-	# --setup logger 
-	# if file for log specified, set and decrease level
-	if args.log!="":
-		logging.basicConfig(filename=args.log, level=logging.INFO, format='%(asctime)s %(message)s')
-
-	# --record some basic information
-	logging.info("Running {}, {}, version={} on target {}.".format(sys.argv[0],disc,version,args.target))
-
-	# --set up working dir:
-	make_outDir(args.outDir)
-
+def run_mainWorkFlow(args):
+		
 	# -- (1) create cross validation folds, if needed
 	if args.preFoldsDir=="":
 		if args.verbose:
@@ -308,6 +294,9 @@ def main():
 		print "Collecting progress data from CV runs"
 	progErr,cvErr = collect_CVProgress(folds=args.nFolds,outDir=args.outDir,nTrees=args.nTrees)
 	plot_CVProgress(progErr,outDir=args.outDir)
+
+	# gonna save the other stuff
+	np.savetxt(args.outDir+'/cvErr.dat',cvErr)
 	if args.verbose:
 		print "Saved oob progress figure."
 		print "CV error at "+str(cvErr[0])
@@ -319,9 +308,11 @@ def main():
 	# -- (3) run permutation analysis for comparison
 	if args.verbose:
 		print "Running permutation analysis"
-	permErr = run_perms_getErr(args.target,folds=args.nFolds,perms=args.nPerms,permRE='.*',
+	permErr = run_perms_getErr(args.target,folds=args.nFolds,perms=args.nPerms,permRE=args.permRE,
 		outDir=args.outDir,mTry=args.mTry,nTrees=args.nTrees,nCores=args.nCores,
 		altDir=args.preFoldsDir,v=args.verbose)
+	np.savetxt(args.outDir+'/permErr.dat',permErr)
+
 	if args.verbose:
 		print "permutation random comparison error at "+str(permErr[0])
 	logging.info("Finished finished {} rounds of permutation analysis".format(args.nPerms))
@@ -331,8 +322,7 @@ def main():
 		print "Running Feature Selection."
 	
 	run_growforest(args.fm,args.target,outInfoPath=args.outDir+'/fullACERunResults.dat',mTry=args.mTry,
-		nTrees=args.nTrees,nCores=args.nCores,ace=args.nAce,impPath=args.outDir+'/fullACEImpResults.dat',
-		permRE=args.permRE)
+		nTrees=args.nTrees,nCores=args.nCores,ace=args.nAce,impPath=args.outDir+'/fullACEImpResults.dat')
 
 	# -- Record summary
 	fout = open(args.outDir+'/summary.txt','w')
@@ -340,14 +330,37 @@ def main():
 	fout.close()
 
 
+			
+
+
+def main():
+	# --get the input arguments
+	parser = argparse.ArgumentParser(description="run random forest analysis of all features vs specified target")
+	args = parse_CmdArgs(parser)
+
+	# --set up working dir:
+	make_outDir(args.outDir)
+
+	# --setup logger 
+	# if file for log specified, set and decrease level
+	if args.log!="":
+		logging.basicConfig(filename=args.outDir+'/'+args.log, level=logging.INFO, format='%(asctime)s %(message)s')
+
+	# --record some basic information
+	logging.info("Running {}, {}, version={} on target {}.".format(sys.argv[0],disc,version,args.target))
+
+
+	#-- run the main workflow	
+	run_mainWorkFlow(args)
+
 	if args.verbose:
 		print "done!"
 	logging.info("run complete")
-	
-	# dump all options to file
-	logging.info("Reporting all options for completed run:\n"+str(vars(args)))
-	
 		
+
+
+	#-- dump all options to file
+	logging.info("Reporting all options for completed run:\n"+str(vars(args)))
 
 
 if __name__ == '__main__':

@@ -2,7 +2,7 @@
 python2.7 script/module to run a standard pairwise analysis on 
 input data of potentially different types. Robust or nonparametric 
 statistical measures/tests are employed when easy-to-implement 
-standards are available (known to the the author). 
+standards are available (known to the author). 
 
 Tests are determined based on the features being compared:
 N-N = Spearman rank, B-B = Fisher Exact, C-C = ChiSq,
@@ -17,6 +17,9 @@ Currently, we assume all data can be loaded into memory.
 Output:
 text files for the p-value matrix, the FDR corrected q-value matrix,
 the correlation coefficient matrix and a log of the run details.
+Note all outputs are symmetric except for the q-values,
+here the rows are the target variables and the cols
+show the relation to other variables.
 
 Dependencies:
 statUtils from genTools (https://github.com/Rtasseff/genTools) 
@@ -29,7 +32,7 @@ import sys
 import numpy as np
 import argparse
 import logging
-
+import os
 
 from genTools import statsUtil
 
@@ -131,11 +134,11 @@ def save_outputMats(mats,keep=[],outDir='.',names=['r.dat','p.dat','q.dat']):
 def make_outDir(outDir):
 	if outDir==".":
 		logging.warning("Using current directory for output, previous files may be overwritten.")
-	elif os.path.exists(dir):
-		logging.warning("Using an existing directory for output, previous files may be overwritten: {}".format(outDIr))
+	elif os.path.exists(outDir):
+		logging.warning("Using an existing directory for output, previous files may be overwritten: {}".format(outDir))
 	else:
-		os.makedirs(dir)
-		logging.info("Making new directory for output: {}".format(outDIr))
+		os.makedirs(outDir)
+		logging.info("Making new directory for output: {}".format(outDir))
 
 
 
@@ -157,25 +160,47 @@ def parse_CmdArgs(parser):
 	parser.add_argument("-obsMinError",
 		help="minimum number of feature observations before error assumed and nan is issued",
 		type=int,default=1)
+	parser.add_argument("-qMax",
+		help="maximum q-value to be included in results summary.",
+		type=float,default=0.001)
 	parser.add_argument("-log",help="print info to specified log file",default="")
 
 	return(parser.parse_args())
 
 
+def write_summary(r,q,qMax,labels,keep,fout):
+	fout.write("Summary of results for all by all pairwise analysis.\n")
+	
+	if len(labels) > len(r):
+		fout.write("Some variables were ignored due to no variation:\n")
+		tmp = labels[~keep]
+		for label in tmp:
+			fout.write(label+'\n')
+	names = labels[keep]
+	fout.write('\n')
+	fout.write("Feature by feature list of relationships:\n")
+	for i in range(len(names)):
+		# probably should report what is nan somewhere
+		# would help with error checking,
+		# need to ignore i,i
+		qTmp = q[i].copy()
+		qTmp[np.isnan(qTmp)]=np.inf 
+		ind = qTmp<qMax
+		if np.sum(ind)>0:
+			qTmp = qTmp[ind]
+			rTmp = r[i,ind]
+			namesTmp = names[ind]
+			ind = np.argsort(qTmp)
+			qTmp = qTmp[ind]
+			rTmp = rTmp[ind]
+			namesTmp = namesTmp[ind]
+			fout.write('----'+names[i]+'----\n')
+			fout.write('feature ID\tcorr\tq-value\n')
+			for j in range(len(qTmp)):
+				fout.write("{}\t{}\t{}\n".format(namesTmp[j],rTmp[j],qTmp[j]))
 
-
-def main():
-	# --get the input arguments
-	parser = argparse.ArgumentParser(description="run all by all pairwise analysis on feature matrix")
-	args = parse_CmdArgs(parser)
-	# --setup logger 
-	# if file for log specified, set and decrease level
-	if args.log!="":
-		logging.basicConfig(filename=args.log, level=logging.INFO, format='%(asctime)s %(message)s')
-
-	# --record some basic information
-	logging.info("Running {}, {}, version={}...".format(sys.argv[0],disc,version))
-
+def run_mainWorkFlow(args):
+	
 	# --get data 
 	# report
 	if args.verbose:
@@ -201,8 +226,6 @@ def main():
 
 	# --save output
 
-	make_outDir(args.outDir)
-
 	if args.verbose:
 		print "saving output..."
 	save_outputMats([r,p,q],keep=keep,outDir=args.outDir,
@@ -210,10 +233,33 @@ def main():
 	logging.info("Output files saved to dir at {}\n\tp-values saved as {}\n\tr-values saved as {}\n\tq-values saved as {}".format(args.outDir,args.pOutFile,args.rOutFile,args.qOutFile))
 
 
+	fout = open(args.outDir+'/summary.txt','w')
+	write_summary(r,q,args.qMax,header,keep,fout)
+	fout.close()
+
+	
+
+def main():
+	# --get the input arguments
+	parser = argparse.ArgumentParser(description="run all by all pairwise analysis on feature matrix")
+	args = parse_CmdArgs(parser)
+
+	make_outDir(args.outDir)
+
+	# --setup logger 
+	# if file for log specified, set and decrease level
+	if args.log!="":
+		logging.basicConfig(filename=args.outDir+'/'+args.log, level=logging.INFO, format='%(asctime)s %(message)s')
+	
+	# --record some basic information
+	logging.info("Running {}, {}, version={}...".format(sys.argv[0],disc,version))
+
+	run_mainWorkFlow(args)
+
 	if args.verbose:
 		print "done!"
 	logging.info("run complete")
-	
+		
 	# dump all options to file
 	logging.info("Reporting all options for completed run:\n"+str(vars(args)))
 	
