@@ -128,25 +128,36 @@ def save_outputMats(mats,keep=[],outDir='.',names=['r.dat','p.dat','q.dat']):
 		else: tmp2 = mats[i]
 		np.savetxt(outDir+'/'+names[i],tmp2,delimiter='\t',fmt='%5.4E')
 
+def make_outDir(outDir):
+	if outDir==".":
+		logging.warning("Using current directory for output, previous files may be overwritten.")
+	elif os.path.exists(dir):
+		logging.warning("Using an existing directory for output, previous files may be overwritten: {}".format(outDIr))
+	else:
+		os.makedirs(dir)
+		logging.info("Making new directory for output: {}".format(outDIr))
+
+
 
 def parse_CmdArgs(parser):
 	"""Get the command line parameters to be used."""
 	parser.add_argument("fm",help="input feature matrix path")
 	parser.add_argument("-v","--verbose", help="increase output verbosity",
 		action="store_true")
-	parser.add_argument("--outDir",help="specify new output directory",default=".")
-	parser.add_argument("--pOutFile",help="specify alternate file name for output p matrix",
+	parser.add_argument("-outDir",help="specify new output directory",default=".")
+	parser.add_argument("-pOutFile",help="specify alternate file name for output p matrix",
 		default="p.dat")
-	parser.add_argument("--rOutFile",help="specify alternate file name for output r matrix",
+	parser.add_argument("-rOutFile",help="specify alternate file name for output r matrix",
 		default="r.dat")	
-	parser.add_argument("--qOutFile",help="specify alternate file name for output q matrix",
+	parser.add_argument("-qOutFile",help="specify alternate file name for output q matrix",
 		default="q.dat")	
-	parser.add_argument("--obsMinWarn",
-		help="minimum number of feature observations before warning is issued",type=int,default=5)
-	parser.add_argument("--obsMinError",
+	parser.add_argument("-obsMinWarn",
+		help="minimum number of feature observations before warning is issued",
+		type=int,default=5)
+	parser.add_argument("-obsMinError",
 		help="minimum number of feature observations before error assumed and nan is issued",
 		type=int,default=1)
-	parser.add_argument("--log",help="print info to specified log file",default="")
+	parser.add_argument("-log",help="print info to specified log file",default="")
 
 	return(parser.parse_args())
 
@@ -189,6 +200,9 @@ def main():
 	q = get_qFDR(p)
 
 	# --save output
+
+	make_outDir(args.outDir)
+
 	if args.verbose:
 		print "saving output..."
 	save_outputMats([r,p,q],keep=keep,outDir=args.outDir,
@@ -199,6 +213,10 @@ def main():
 	if args.verbose:
 		print "done!"
 	logging.info("run complete")
+	
+	# dump all options to file
+	logging.info("Reporting all options for completed run:\n"+str(vars(args)))
+	
 
 
 if __name__ == '__main__':
