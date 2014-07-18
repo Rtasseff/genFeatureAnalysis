@@ -50,17 +50,17 @@ a better listing of the options (eg. $python pairwise.py -h)
 
 A list of command-line work-flow tools:
 
-pairwise.py 
-All by all, Pairwise only workflows. Usage: 
+pairwise.py    
+All by all, Pairwise only workflows. Usage:   
 $ python2.7 pairwise.py testData.afm -outDir test -log log.out -v
 
-randforest.py 
-One target vs all features, randomforest only workflows. Usage:
+randforest.py   
+One target vs all features, randomforest only workflows. Usage:       
 $ python2.7 pairwise.py testData.afm N:PRIME:division -outDir test -log log.out -v
 
-runGFA.py
-COmplete general feature analysis implimenting all-by-all using
-pariwise.py and randforest.py. Usage:
+runGFA.py    
+Complete general feature analysis implimenting all-by-all using
+pariwise.py and randforest.py. Usage:   
 $ python2.7 runGFA.py testData.afm -outDir test -log log.out -v
 
 Formats 
