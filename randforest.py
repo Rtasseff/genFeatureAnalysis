@@ -231,7 +231,74 @@ def write_summary(cvErr,permErr,impPath,target,pMax,fout):
 	del p
 	
 
+def run_mainWorkFlow(args,outDir,target):
+		
+	# -- (1) create cross validation folds, if needed
+	if args.preFoldsDir=="":
+		if args.verbose:
+			print "Creating feature matrices for cross validation" 
+		logging.info("Creating feature matrices for {} fold cross validation. \n\tUsing feature matrix: {}.\n\tStoring results in {}/folds.".format(args.nFolds,args.fm,outDir))
+		make_CVFolds(args.fm,target,folds=args.nFolds,outDir=outDir)
+	else:
+		logging.info("Here we will assume that feature matrices for {} fold cross validation derived from {} already exist at {}".format(args.nFolds,args.fm,outDir))
 
+
+	# -- (2-A) run random forest to obtain CV error and convergence results 
+	if args.verbose:
+		print "Running initial cross validation {} trees for each".format(args.nTrees)	
+	run_CV(target,folds=args.nFolds,outDir=outDir,progress=True,mTry=args.mTry,
+		nTrees=args.nTrees,nCores=args.nCores,altDir=args.preFoldsDir,v=args.verbose)
+	logging.info("Finished initial cross validation, results in {}/cvResults_fold_i.dat.".format(outDir))
+
+	# -- (2-B) collect output, with focus on progress
+	if args.verbose:
+		print "Collecting progress data from CV runs"
+	progErr,cvErr = collect_CVProgress(folds=args.nFolds,outDir=outDir,nTrees=args.nTrees)
+	plot_CVProgress(progErr,outDir=outDir)
+
+	# gonna save the other stuff
+	np.savetxt(outDir+'/cvErr.dat',cvErr)
+	if args.verbose:
+		print "Saved oob progress figure."
+		print "CV error at "+str(cvErr[0])
+
+	logging.info("A figure on oob error progress and convergence was saved to {}/errorProgress.pdf.".format(outDir))
+
+
+
+	# -- (3) run permutation analysis for comparison
+	if args.verbose:
+		print "Running permutation analysis"
+	permErr = run_perms_getErr(target,folds=args.nFolds,perms=args.nPerms,permRE=args.permRE,
+		outDir=outDir,mTry=args.mTry,nTrees=args.nTrees,nCores=args.nCores,
+		altDir=args.preFoldsDir,v=args.verbose)
+	np.savetxt(outDir+'/permErr.dat',permErr)
+
+	if args.verbose:
+		print "permutation random comparison error at "+str(permErr[0])
+	logging.info("Finished finished {} rounds of permutation analysis".format(args.nPerms))
+
+	# -- (4) feature selection 
+	if args.verbose:
+		print "Running Feature Selection."
+	
+	run_growforest(args.fm,target,outInfoPath=outDir+'/fullACERunResults.dat',mTry=args.mTry,
+		nTrees=args.nTrees,nCores=args.nCores,ace=args.nAce,impPath=outDir+'/fullACEImpResults.dat')
+
+	# -- Record summary
+	fout = open(outDir+'/summary.txt','w')
+	write_summary(cvErr,permErr,outDir+'/fullACEImpResults.dat',target,args.pMax,fout)
+	fout.close()
+
+
+def make_outDir(outDir):
+	if outDir==".":
+		logging.warning("Using current directory for output, previous files may be overwritten.")
+	elif os.path.exists(outDir):
+		logging.warning("Using an existing directory for output, previous files may be overwritten: {}".format(outDir))
+	else:
+		os.makedirs(outDir)
+		logging.info("Making new directory for output: {}".format(outDir))
 
 
 
@@ -260,77 +327,6 @@ def parse_CmdArgs(parser):
 
 	return(parser.parse_args())
 
-def make_outDir(outDir):
-	if outDir==".":
-		logging.warning("Using current directory for output, previous files may be overwritten.")
-	elif os.path.exists(outDir):
-		logging.warning("Using an existing directory for output, previous files may be overwritten: {}".format(outDir))
-	else:
-		os.makedirs(outDir)
-		logging.info("Making new directory for output: {}".format(outDir))
-
-
-def run_mainWorkFlow(args):
-		
-	# -- (1) create cross validation folds, if needed
-	if args.preFoldsDir=="":
-		if args.verbose:
-			print "Creating feature matrices for cross validation" 
-		logging.info("Creating feature matrices for {} fold cross validation. \n\tUsing feature matrix: {}.\n\tStoring results in {}/folds.".format(args.nFolds,args.fm,args.outDir))
-		make_CVFolds(args.fm,args.target,folds=args.nFolds,outDir=args.outDir)
-	else:
-		logging.info("Here we will assume that feature matrices for {} fold cross validation derived from {} already exist at {}".format(args.nFolds,args.fm,args.outDir))
-
-
-	# -- (2-A) run random forest to obtain CV error and convergence results 
-	if args.verbose:
-		print "Running initial cross validation {} trees for each".format(args.nTrees)	
-	run_CV(args.target,folds=args.nFolds,outDir=args.outDir,progress=True,mTry=args.mTry,
-		nTrees=args.nTrees,nCores=args.nCores,altDir=args.preFoldsDir,v=args.verbose)
-	logging.info("Finished initial cross validation, results in {}/cvResults_fold_i.dat.".format(args.outDir))
-
-	# -- (2-B) collect output, with focus on progress
-	if args.verbose:
-		print "Collecting progress data from CV runs"
-	progErr,cvErr = collect_CVProgress(folds=args.nFolds,outDir=args.outDir,nTrees=args.nTrees)
-	plot_CVProgress(progErr,outDir=args.outDir)
-
-	# gonna save the other stuff
-	np.savetxt(args.outDir+'/cvErr.dat',cvErr)
-	if args.verbose:
-		print "Saved oob progress figure."
-		print "CV error at "+str(cvErr[0])
-
-	logging.info("A figure on oob error progress and convergence was saved to {}/errorProgress.pdf.".format(args.outDir))
-
-
-
-	# -- (3) run permutation analysis for comparison
-	if args.verbose:
-		print "Running permutation analysis"
-	permErr = run_perms_getErr(args.target,folds=args.nFolds,perms=args.nPerms,permRE=args.permRE,
-		outDir=args.outDir,mTry=args.mTry,nTrees=args.nTrees,nCores=args.nCores,
-		altDir=args.preFoldsDir,v=args.verbose)
-	np.savetxt(args.outDir+'/permErr.dat',permErr)
-
-	if args.verbose:
-		print "permutation random comparison error at "+str(permErr[0])
-	logging.info("Finished finished {} rounds of permutation analysis".format(args.nPerms))
-
-	# -- (4) feature selection 
-	if args.verbose:
-		print "Running Feature Selection."
-	
-	run_growforest(args.fm,args.target,outInfoPath=args.outDir+'/fullACERunResults.dat',mTry=args.mTry,
-		nTrees=args.nTrees,nCores=args.nCores,ace=args.nAce,impPath=args.outDir+'/fullACEImpResults.dat')
-
-	# -- Record summary
-	fout = open(args.outDir+'/summary.txt','w')
-	write_summary(cvErr,permErr,args.outDir+'/fullACEImpResults.dat',args.target,args.pMax,fout)
-	fout.close()
-
-
-			
 
 
 def main():
@@ -344,6 +340,7 @@ def main():
 	# --setup logger 
 	# if file for log specified, set and decrease level
 	if args.log!="":
+		logging.getLogger('').handlers = []
 		logging.basicConfig(filename=args.outDir+'/'+args.log, level=logging.INFO, format='%(asctime)s %(message)s')
 
 	# --record some basic information
@@ -351,7 +348,7 @@ def main():
 
 
 	#-- run the main workflow	
-	run_mainWorkFlow(args)
+	run_mainWorkFlow(args,args.outDir,args.target)
 
 	if args.verbose:
 		print "done!"
