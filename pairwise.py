@@ -1,3 +1,4 @@
+#!/opt/local/bin/python2.7
 """
 python2.7 script/module to run a standard pairwise analysis on 
 input data of potentially different types. Robust or nonparametric 

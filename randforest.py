@@ -1,3 +1,4 @@
+#!/opt/local/bin/python2.7
 """
 python2.7 script/module to run work-flows using the command line
 random forest utility, Cloud Forest.  The goal is to use metrics 
