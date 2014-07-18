@@ -23,6 +23,7 @@ and implementation of the pairwise analysis.
 Installation
 -------------------
 From scratch:
+
 1. Install GO (http://golang.org/doc/install)
 2. Install CloudForest and optional utilities 
 (https://github.com/ryanbressler/CloudForest)
