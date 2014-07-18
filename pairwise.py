@@ -199,7 +199,7 @@ def write_summary(r,q,qMax,labels,keep,fout):
 			for j in range(len(qTmp)):
 				fout.write("{}\t{}\t{}\n".format(namesTmp[j],rTmp[j],qTmp[j]))
 
-def run_mainWorkFlow(args):
+def run_mainWorkFlow(args,outDir):
 	
 	# --get data 
 	# report
@@ -228,12 +228,12 @@ def run_mainWorkFlow(args):
 
 	if args.verbose:
 		print "saving output..."
-	save_outputMats([r,p,q],keep=keep,outDir=args.outDir,
+	save_outputMats([r,p,q],keep=keep,outDir=outDir,
 		names=[args.rOutFile,args.pOutFile,args.qOutFile])
 	logging.info("Output files saved to dir at {}\n\tp-values saved as {}\n\tr-values saved as {}\n\tq-values saved as {}".format(args.outDir,args.pOutFile,args.rOutFile,args.qOutFile))
 
 
-	fout = open(args.outDir+'/summary.txt','w')
+	fout = open(outDir+'/summary.txt','w')
 	write_summary(r,q,args.qMax,header,keep,fout)
 	fout.close()
 
@@ -249,12 +249,13 @@ def main():
 	# --setup logger 
 	# if file for log specified, set and decrease level
 	if args.log!="":
+		logging.getLogger('').handlers = []
 		logging.basicConfig(filename=args.outDir+'/'+args.log, level=logging.INFO, format='%(asctime)s %(message)s')
 	
 	# --record some basic information
 	logging.info("Running {}, {}, version={}...".format(sys.argv[0],disc,version))
 
-	run_mainWorkFlow(args)
+	run_mainWorkFlow(args,args.outDir)
 
 	if args.verbose:
 		print "done!"
