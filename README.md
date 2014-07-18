@@ -200,8 +200,7 @@ By priority:
 1. Summary results for random forest all by all in runGFA including 
   1. using imp scores to estimate a metric that 
 is comparable over different targets/forests,
-comparable concept to effect size.  
-It will probably be a fraction of the COD.
+comparable concept to effect size. It will probably be a fraction of the COD.
   2. Gathering the above, the p-vaule and the 
 q-value into matrices comparable to pairwise.
   3. Creating a single barplot showing the 
