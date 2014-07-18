@@ -196,6 +196,7 @@ workflows and to produce summary results.
 ToDos
 ----------------
 By priority:
+
 1. Summary results for random forest all by all in runGFA including 
   1. using imp scores to estimate a metric that 
 is comparable over different targets/forests,
