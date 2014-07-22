@@ -37,6 +37,8 @@ import pairwise
 import randforest
 import logging
 
+from genTools import statsUtil
+
 
 
 disc="General Feature Analysis workflow"
@@ -44,10 +46,57 @@ version=1.0
 
 
 
+def getImpInfo(outDir,labels,name='fullACEImpResults.dat'):
+	"""Get the importance scores, the p-values and the q-values 
+	for the importance score run results in indicated outDir.
+	Scores are returned in the same order as labels."""
+	# get data
+	impPath = outDir+'/'+name
+	data = np.loadtxt(impPath,dtype=str,delimiter='\t')
+	pTmp = np.array(data[:,2],dtype=float)
+	impTmp = np.array(data[:,3],dtype=float)
+	labelsTmp = data[:,1]
+	# arrange data
+	_,qTmp,_ = statsUtil.fdr_bh(pTmp)
+	# rearange 
+	n = len(labels)
+	p = np.zeros(n) + np.nan
+	q = np.zeros(n) + np.nan
+	imp = np.zeros(n) + np.nan
+	m = len(labelsTmp)
+	for i in range(n):
+		p[labels==lablesTmp[i]] = pTmp[i]
+		q[labels==lablesTmp[i]] = qTmp[i]
+		imp[labels==lablesTmp[i]] = impTmp[i]
+	
+	return(imp, p, q)
+	
+	
+	
 
 
+def calcFracCOD(cvErr,permErr,imp):
+	"""Calculate the fraction of COD corresponding 
+	to each feature based on the importance scores.
+	Here the COD (coefficient of determination) 
+	will be (permErr-cvErr)/permErr.
+	"""
+	cod = (permErr-cvErr)/permErr
+	fracImp = imp/np.sum(imp[~np.isnan(imp)])
+	fracCOD = cod*fracImp
+	return(fracCOD)
 
-
+def getEffectSize(imp,outDir):
+	"""Given the imp scores and the results directory,
+	this will collect the information to calculate 
+	the effect size related to the importance scores.
+	Currently we are using the fraction of COD, see
+	calcFracCOD().
+	"""
+	permErr = np.loadtxt(outDir+'/permErr.dat')
+	cvErr = np.loadtxt(outDir+'/cvErr.dat')
+	effectSize = calcFracCOD(cvErr,permErr,imp)
+	return(effectSize)
 
 
 
@@ -147,6 +196,29 @@ def run_fullWorkFlow(args):
 		except:
 			# need to fix this up a bit!!
 			logging.warning("Error while running RF on {}, results my be incomplete.".format(label))
+			
+
+
+	# -- Collect RF info for all by all summary 
+	if args.verbose:
+		print "Collecting results of all by all random forest analysis..."
+
+	n = len(header)
+	p = np.zeros((n,n)) + np.nan
+	q = np.zeros((n,n)) + np.nan
+	r = np.zeros((n,n)) + np.nan
+
+	for i in range(n):
+		label = header[i]
+		tmpLabel = label.replace(':','-')
+		tmpOutDir = rfOutDir+'/'+tmpLabel
+		try:
+			imp,p[i],q[i] = getImpInfo(tmpOutDir,header)
+			r[i] = getEffectSize(imp,tmpOutDir)
+		except:
+			# need to fix this up a bit!!
+			logging.warning("Error while getting RF results on {}, results my be incomplete.".format(label))
+	pairwise.save_outputMats([r,p,q],header,outDir = rfOutDir,names=['r.dat','p.dat','q.dat'])
 			
 
 
