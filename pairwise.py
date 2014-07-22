@@ -34,6 +34,7 @@ import numpy as np
 import argparse
 import logging
 import os
+import matplotlib.pyplot as plt
 
 from genTools import statsUtil
 
@@ -115,7 +116,8 @@ def run_filter(data,label):
 	return(keep)
 
 
-def save_outputMats(mats,keep=[],outDir='.',names=['r.dat','p.dat','q.dat']):
+def save_outputMats(mats,labels,keep=[],outDir='.',names=['r.dat','p.dat','q.dat']):
+	"""save data to text file and create/save pcolor plot of data"""
 
 	m = len(mats)
 
@@ -131,6 +133,18 @@ def save_outputMats(mats,keep=[],outDir='.',names=['r.dat','p.dat','q.dat']):
 			tmp2[:,keep]=tmp
 		else: tmp2 = mats[i]
 		np.savetxt(outDir+'/'+names[i],tmp2,delimiter='\t',fmt='%5.4E')
+		# create p-color
+		plt.imshow(tmp2,interpolation='none')
+		#print len(tmp2)	
+		#print len(labels)
+		plt.yticks(np.arange(len(labels)),labels)
+		#plt.xticks(np.arange(len(labels))+.5,labels)
+		plt.colorbar()
+		name = names[i].split('.')[0]
+		plt.savefig(outDir+'/pcolor_'+name+'.png',format='png')
+		plt.clf()
+		plt.close()
+		
 
 def make_outDir(outDir):
 	if outDir==".":
@@ -229,7 +243,7 @@ def run_mainWorkFlow(args,outDir):
 
 	if args.verbose:
 		print "saving output..."
-	save_outputMats([r,p,q],keep=keep,outDir=outDir,
+	save_outputMats([r,p,q],header,keep=keep,outDir=outDir,
 		names=[args.rOutFile,args.pOutFile,args.qOutFile])
 	logging.info("Output files saved to dir at {}\n\tp-values saved as {}\n\tr-values saved as {}\n\tq-values saved as {}".format(args.outDir,args.pOutFile,args.rOutFile,args.qOutFile))
 
