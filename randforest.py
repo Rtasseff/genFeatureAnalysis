@@ -211,9 +211,9 @@ def parse_progressResults(resultsPath,nTrees=100):
 
 		
 
-def write_summary(cvErr,permErr,impPath,target,pMax,fout):
+def write_summary(cvErr,permErr,permErrBatch,permRE,impPath,target,pMax,fout):
 	fout.write('Summary of results for Random (Cloud) Forest analysis of '+target+'.\n')
-	fout.write("We found a cv error of {} +/- {},\ncompared to a randomized baseline of {} +/- {}.\n".format(cvErr[0],np.sqrt(cvErr[1]),permErr[0],np.sqrt(permErr[1])))
+	fout.write("We found a cv error of {} +/- {},\ncompared to a full randomized baseline of {} +/- {},\nand a semi randomized baseline of {} +/- {} (shuffling only {} features to identify batch effects).\n".format(cvErr[0],np.sqrt(cvErr[1]),permErr[0],np.sqrt(permErr[1]),permErrBatch[0],np.sqrt(permErrBatch[1]),permRE))
 	fout.write("Features with significant importance scores:\n")
 	fout.write("Feature ID\tImportance\tp-value\n")
 	# lets get the importance scores
@@ -267,17 +267,30 @@ def run_mainWorkFlow(args,outDir,target):
 
 
 
-	# -- (3) run permutation analysis for comparison
+	# -- (3 A) run permutation analysis for comparison
 	if args.verbose:
-		print "Running permutation analysis"
-	permErr = run_perms_getErr(target,folds=args.nFolds,perms=args.nPerms,permRE=args.permRE,
+		print "Running permutation analysis by shuffeling all features"
+	permErr = run_perms_getErr(target,folds=args.nFolds,perms=args.nPerms,permRE='.*',
 		outDir=outDir,mTry=args.mTry,nTrees=args.nTrees,nCores=args.nCores,
 		altDir=args.preFoldsDir,v=args.verbose)
 	np.savetxt(outDir+'/permErr.dat',permErr)
 
 	if args.verbose:
 		print "permutation random comparison error at "+str(permErr[0])
-	logging.info("Finished finished {} rounds of permutation analysis".format(args.nPerms))
+	logging.info("Finished finished {} rounds of permutation analysis on all variables.".format(args.nPerms))
+
+
+	# -- (3B) run permutation analysis for comparison
+	if args.verbose:
+		print "Running permutation analysis only on "+args.permRE+" features."
+	permErrBatch = run_perms_getErr(target,folds=args.nFolds,perms=args.nPerms,permRE=args.permRE,
+		outDir=outDir,mTry=args.mTry,nTrees=args.nTrees,nCores=args.nCores,
+		altDir=args.preFoldsDir,v=args.verbose)
+	np.savetxt(outDir+'/permErrBatch.dat',permErrBatch)
+
+	if args.verbose:
+		print "permutation of "+args.permRE+" random comparison error at "+str(permErrBatch[0])
+	logging.info("Finished finished {} rounds of permutation analysis by shuffeling {} features".format(args.nPerms,args.permRE))
 
 	# -- (4) feature selection 
 	if args.verbose:
@@ -288,7 +301,7 @@ def run_mainWorkFlow(args,outDir,target):
 
 	# -- Record summary
 	fout = open(outDir+'/summary.txt','w')
-	write_summary(cvErr,permErr,outDir+'/fullACEImpResults.dat',target,args.pMax,fout)
+	write_summary(cvErr,permErr,permErrBatch,args.permRE,outDir+'/fullACEImpResults.dat',target,args.pMax,fout)
 	fout.close()
 
 
