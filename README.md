@@ -198,18 +198,13 @@ ToDos
 By priority:
 
 1. Summary results for random forest all by all in runGFA including 
-  1. using imp scores to estimate a metric that 
-is comparable over different targets/forests,
-comparable concept to effect size. It will probably be a fraction of the COD.
-  2. Gathering the above, the p-vaule and the 
-q-value into matrices comparable to pairwise.
-  3. Creating a single barplot showing the 
+  1. Creating a single barplot showing the 
 cv errors vs perm errors for each target feature
-  4. A combined summary.
-2. Creating heatmaps/p-colors for each save matrix.
-3. Add blacklisting
-4. Adding option to remove strong univariate (pairwise)
-features from random forest. 
+  1. A combined summary.
+1. Add blacklisting
+1. Adding option to remove strong univariate (pairwise)
+features from random forest.
+1. Add logic to stop analysis if COD drops below a cutoff. 
 
 
 License
