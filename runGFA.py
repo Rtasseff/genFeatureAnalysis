@@ -64,10 +64,10 @@ def getImpInfo(outDir,labels,name='fullACEImpResults.dat'):
 	q = np.zeros(n) + np.nan
 	imp = np.zeros(n) + np.nan
 	m = len(labelsTmp)
-	for i in range(n):
-		p[labels==lablesTmp[i]] = pTmp[i]
-		q[labels==lablesTmp[i]] = qTmp[i]
-		imp[labels==lablesTmp[i]] = impTmp[i]
+	for i in range(m):
+		p[labels==labelsTmp[i]] = pTmp[i]
+		q[labels==labelsTmp[i]] = qTmp[i]
+		imp[labels==labelsTmp[i]] = impTmp[i]
 	
 	return(imp, p, q)
 	
@@ -82,6 +82,7 @@ def calcFracCOD(cvErr,permErr,imp):
 	will be (permErr-cvErr)/permErr.
 	"""
 	cod = (permErr-cvErr)/permErr
+	if cod < 0: cod = 0
 	fracImp = imp/np.sum(imp[~np.isnan(imp)])
 	fracCOD = cod*fracImp
 	return(fracCOD)
@@ -95,7 +96,7 @@ def getEffectSize(imp,outDir):
 	"""
 	permErr = np.loadtxt(outDir+'/permErr.dat')
 	cvErr = np.loadtxt(outDir+'/cvErr.dat')
-	effectSize = calcFracCOD(cvErr,permErr,imp)
+	effectSize = calcFracCOD(cvErr[0],permErr[0],imp)
 	return(effectSize)
 
 
@@ -142,7 +143,8 @@ def parse_CmdArgs(parser):
 	parser.add_argument("-mTry",help="the number of features to try when splitting",type=int,default="0")
 	parser.add_argument("-nPerms",help="the number of permutations to do for random control",type=int,default="10")
 	parser.add_argument("-nAce",help="the number of artificial contrast permutations for importance est",
-		type=int,default="100")
+		type=int,default="10")
+	parser.add_argument("-nTreesAce",help="the number of trees used in ace analysis",type=int,default="1000")
 	parser.add_argument("-pMax",help="maximum p-value cutoff to include in summary output",
 		type=float,default="0.001")
 	parser.add_argument("-preFoldsDir",help="if specified, assumes CV fold fms are here",default="")
@@ -193,9 +195,10 @@ def run_fullWorkFlow(args):
 		logging.info("Starting feature "+label+" in "+tmpOutDir+".")
 		try:
 			randforest.run_mainWorkFlow(args,tmpOutDir,label)
-		except:
+		except Exception as e:
 			# need to fix this up a bit!!
-			logging.warning("Error while running RF on {}, results my be incomplete.".format(label))
+			logging.warning("Error while running RF on {}, results my be incomplete.\n\t error = {}".format(label,e))
+
 			
 
 
@@ -215,9 +218,12 @@ def run_fullWorkFlow(args):
 		try:
 			imp,p[i],q[i] = getImpInfo(tmpOutDir,header)
 			r[i] = getEffectSize(imp,tmpOutDir)
-		except:
+		except Exception as e:
 			# need to fix this up a bit!!
-			logging.warning("Error while getting RF results on {}, results my be incomplete.".format(label))
+			logging.warning("Error while getting RF results on {}, results my be incomplete.\n\t error = {}".format(label,e))
+			
+
+
 	pairwise.save_outputMats([r,p,q],header,outDir = rfOutDir,names=['r.dat','p.dat','q.dat'])
 			
 

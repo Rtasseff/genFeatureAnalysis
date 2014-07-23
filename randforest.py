@@ -328,7 +328,8 @@ def parse_CmdArgs(parser):
 	parser.add_argument("-mTry",help="the number of features to try when splitting",type=int,default="0")
 	parser.add_argument("-nPerms",help="the number of permutations to do for random control",type=int,default="10")
 	parser.add_argument("-nAce",help="the number of artificial contrast permutations for importance est",
-		type=int,default="100")
+		type=int,default="10")
+	parser.add_argument("-nTreesAce",help="the number of trees used in ace analysis",type=int,default="1000")
 	parser.add_argument("-pMax",help="maximum p-value cutoff to include in summary output",
 		type=float,default="0.001")
 	parser.add_argument("-outDir",help="directory used for temporary files and final output",default=".")
